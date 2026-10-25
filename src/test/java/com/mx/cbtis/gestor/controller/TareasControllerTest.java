@@ -177,6 +177,24 @@ class TareasControllerTest {
         verifyNoMoreInteractions(repository);
     }
 
+    @Test
+    void crearConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.addTareas(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void actualizarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.updateTareas(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void eliminarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.deleteTareas(null));
+        verifyNoInteractions(repository);
+    }
+
     @ParameterizedTest
     @CsvSource({
         "POST, /addTareas",

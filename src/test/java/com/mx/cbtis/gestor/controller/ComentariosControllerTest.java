@@ -175,6 +175,24 @@ class ComentariosControllerTest {
         verifyNoMoreInteractions(repository);
     }
 
+    @Test
+    void crearConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.addComentario(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void actualizarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.updateComentario(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void eliminarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.deleteComentario(null));
+        verifyNoInteractions(repository);
+    }
+
     @ParameterizedTest
     @CsvSource({
         "POST, /addComentario",

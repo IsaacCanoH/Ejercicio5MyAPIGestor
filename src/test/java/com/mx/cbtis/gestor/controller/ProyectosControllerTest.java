@@ -177,6 +177,24 @@ class ProyectosControllerTest {
         verifyNoMoreInteractions(repository);
     }
 
+    @Test
+    void crearConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.addProyecto(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void actualizarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.updateProyecto(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void eliminarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.deleteProyecto(null));
+        verifyNoInteractions(repository);
+    }
+
     @ParameterizedTest
     @CsvSource({
         "POST, /addProyecto",

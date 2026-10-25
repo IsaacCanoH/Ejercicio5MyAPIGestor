@@ -177,6 +177,24 @@ class UsuarioControllerTest {
         verifyNoMoreInteractions(repository);
     }
 
+    @Test
+    void crearConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.addUsuario(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void actualizarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.updateUsuario(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void eliminarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.deleteUsuario(null));
+        verifyNoInteractions(repository);
+    }
+
     @ParameterizedTest
     @CsvSource({
         "POST, /addUsuario",

@@ -174,6 +174,24 @@ class AsignacionesControllerTest {
         verifyNoMoreInteractions(repository);
     }
 
+    @Test
+    void crearConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.addAsignacion(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void actualizarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.updateAsignacion(null));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void eliminarConNullDevuelveCeroSinUsarElRepositorio() {
+        assertEquals(0, controller.deleteAsignacion(null));
+        verifyNoInteractions(repository);
+    }
+
     @ParameterizedTest
     @CsvSource({
         "POST, /addAsignacion",
