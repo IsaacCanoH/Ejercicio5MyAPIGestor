@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -27,6 +29,43 @@ class TareasRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
+
+    @Test
+    void filtraLasTareasDeCadaProyectoYDevuelveVacioCuandoNoTieneTareas() {
+        Proyectos proyectoA = new Proyectos();
+        proyectoA.setNombre("Proyecto A para probar filtros");
+        Integer idProyectoA = proyectosRepository.save(proyectoA).getId_proyecto();
+        Proyectos proyectoB = new Proyectos();
+        proyectoB.setNombre("Proyecto B para probar filtros");
+        Integer idProyectoB = proyectosRepository.save(proyectoB).getId_proyecto();
+        Proyectos proyectoVacio = new Proyectos();
+        proyectoVacio.setNombre("Proyecto sin tareas");
+        Integer idProyectoVacio = proyectosRepository.save(proyectoVacio).getId_proyecto();
+
+        Tareas tareaA = new Tareas();
+        tareaA.setNombre("Tarea exclusiva del proyecto A");
+        tareaA.setId_proyecto(idProyectoA);
+        Integer idTareaA = tareasRepository.save(tareaA).getId_tarea();
+        Tareas otraTareaA = new Tareas();
+        otraTareaA.setNombre("Segunda tarea del proyecto A");
+        otraTareaA.setId_proyecto(idProyectoA);
+        Integer idOtraTareaA = tareasRepository.save(otraTareaA).getId_tarea();
+        Tareas tareaB = new Tareas();
+        tareaB.setNombre("Tarea exclusiva del proyecto B");
+        tareaB.setId_proyecto(idProyectoB);
+        Integer idTareaB = tareasRepository.save(tareaB).getId_tarea();
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Integer> tareasA = tareasRepository.findByIdProyecto(idProyectoA).stream()
+                .map(Tareas::getId_tarea).toList();
+        assertEquals(2, tareasA.size(), "Deben devolverse todas las tareas de A y ninguna de B");
+        assertTrue(tareasA.containsAll(List.of(idTareaA, idOtraTareaA)));
+        assertEquals(List.of(idTareaB), tareasRepository.findByIdProyecto(idProyectoB).stream()
+                .map(Tareas::getId_tarea).toList(), "El proyecto B no debe incluir tareas del proyecto A");
+        assertTrue(tareasRepository.findByIdProyecto(idProyectoVacio).isEmpty(),
+                "Un proyecto sin tareas debe devolver una lista vacia");
+    }
 
     @Test
     void insertarYSeleccionarTarea() {

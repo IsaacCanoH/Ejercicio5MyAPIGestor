@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -27,6 +29,43 @@ class ComentariosRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
+
+    @Test
+    void filtraLosComentariosDeCadaTareaYDevuelveVacioCuandoNoTieneComentarios() {
+        Tareas tareaA = new Tareas();
+        tareaA.setNombre("Tarea A para probar comentarios");
+        Integer idTareaA = tareasRepository.save(tareaA).getId_tarea();
+        Tareas tareaB = new Tareas();
+        tareaB.setNombre("Tarea B para probar comentarios");
+        Integer idTareaB = tareasRepository.save(tareaB).getId_tarea();
+        Tareas tareaVacia = new Tareas();
+        tareaVacia.setNombre("Tarea sin comentarios");
+        Integer idTareaVacia = tareasRepository.save(tareaVacia).getId_tarea();
+
+        Comentarios comentarioA = new Comentarios();
+        comentarioA.setTexto_comentario("Comentario exclusivo de la tarea A");
+        comentarioA.setId_tarea(idTareaA);
+        Integer idComentarioA = comentariosRepository.save(comentarioA).getId_comentario();
+        Comentarios otroComentarioA = new Comentarios();
+        otroComentarioA.setTexto_comentario("Segundo comentario de la tarea A");
+        otroComentarioA.setId_tarea(idTareaA);
+        Integer idOtroComentarioA = comentariosRepository.save(otroComentarioA).getId_comentario();
+        Comentarios comentarioB = new Comentarios();
+        comentarioB.setTexto_comentario("Comentario exclusivo de la tarea B");
+        comentarioB.setId_tarea(idTareaB);
+        Integer idComentarioB = comentariosRepository.save(comentarioB).getId_comentario();
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Integer> comentariosA = comentariosRepository.findByTarea(idTareaA).stream()
+                .map(Comentarios::getId_comentario).toList();
+        assertEquals(2, comentariosA.size(), "Deben devolverse todos los comentarios de A y ninguno de B");
+        assertTrue(comentariosA.containsAll(List.of(idComentarioA, idOtroComentarioA)));
+        assertEquals(List.of(idComentarioB), comentariosRepository.findByTarea(idTareaB).stream()
+                .map(Comentarios::getId_comentario).toList(), "La tarea B no debe incluir comentarios de A");
+        assertTrue(comentariosRepository.findByTarea(idTareaVacia).isEmpty(),
+                "Una tarea sin comentarios debe devolver una lista vacia");
+    }
 
     @Test
     void insertarYSeleccionarComentario() {

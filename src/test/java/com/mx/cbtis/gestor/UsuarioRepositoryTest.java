@@ -4,7 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -22,6 +26,24 @@ class UsuarioRepositoryTest {
 
     @Autowired
     private TestEntityManager entityManager;
+
+    @ParameterizedTest
+    @CsvSource({"true, clave-correcta", "false, clave-incorrecta"})
+    void noAutenticaConCorreoInexistenteOClaveIncorrecta(boolean correoInexistente, String claveConsultada) {
+        String correo = "credenciales-" + UUID.randomUUID() + "@example.test";
+        Usuario usuario = new Usuario();
+        usuario.setNombre("Usuario para probar credenciales");
+        usuario.setCorreo_electronico(correo);
+        usuario.setContrasena("clave-correcta");
+        usuarioRepository.save(usuario);
+        entityManager.flush();
+        entityManager.clear();
+
+        String correoConsultado = correoInexistente ? "inexistente-" + correo : correo;
+
+        assertTrue(usuarioRepository.findByCorreoPass(correoConsultado, claveConsultada).isEmpty(),
+                "El repositorio no debe autenticar si el correo o la clave no coinciden");
+    }
 
     @Test
     void insertarYSeleccionarUsuario() {
