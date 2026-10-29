@@ -2,6 +2,7 @@ package com.mx.cbtis.gestor.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
@@ -131,11 +133,14 @@ class TareasControllerTest {
 
     @Test
     void actualizaElRegistroConElIdentificadorYDatosRecibidos() throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.of(registro));
+
         mvc.perform(post("/updateTareas").contentType(MediaType.APPLICATION_JSON)
                 .content(JSON_REGISTRO))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
 
+        verify(repository).findById(17);
         verify(repository).save(registroCaptor.capture());
         assertEquals(mapper.readTree(JSON_REGISTRO), mapper.valueToTree(registroCaptor.getValue()));
         verifyNoMoreInteractions(repository);
@@ -143,11 +148,14 @@ class TareasControllerTest {
 
     @Test
     void eliminaElRegistroIndicado() throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.of(registro));
+
         mvc.perform(delete("/deleteTareas").contentType(MediaType.APPLICATION_JSON)
                 .content(JSON_REGISTRO))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
 
+        verify(repository).findById(17);
         verify(repository).delete(registroCaptor.capture());
         assertEquals(mapper.readTree(JSON_REGISTRO), mapper.valueToTree(registroCaptor.getValue()));
         verifyNoMoreInteractions(repository);
@@ -242,6 +250,113 @@ class TareasControllerTest {
         mvc.perform(post("/getTarea").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
+        verifyNoInteractions(repository);
+    }
+
+
+    @Test
+    void ignoraElIdentificadorEnElAltaParaNoSobrescribirRegistros() throws Exception {
+        when(repository.save(any(Tareas.class))).thenAnswer(invocacion -> {
+            Tareas generado = invocacion.getArgument(0);
+            assertNull(generado.getId_tarea(), "El ID enviado no debe llegar al repositorio");
+            generado.setId_tarea(42);
+            return generado;
+        });
+
+        mvc.perform(post("/addTareas").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON_REGISTRO))
+                .andExpect(status().isOk())
+                .andExpect(content().string("1"));
+
+        verify(repository).save(registroCaptor.capture());
+        assertEquals(42, registroCaptor.getValue().getId_tarea());
+        verifyNoMoreInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/updateTareas", "/deleteTareas"})
+    void rechazaCambiosSinIdValido(String ruta) throws Exception {
+        for (String cuerpo : List.of("{}", "{\"id_tarea\":null}",
+                "{\"id_tarea\":0}", "{\"id_tarea\":-1}")) {
+            mvc.perform(request(ruta.startsWith("/delete") ? HttpMethod.DELETE : HttpMethod.POST, ruta)
+                    .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/updateTareas", "/deleteTareas"})
+    void noCreaNiEliminaUnRegistroQueNoExiste(String ruta) throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.empty());
+
+        mvc.perform(request(ruta.startsWith("/delete") ? HttpMethod.DELETE : HttpMethod.POST, ruta)
+                .contentType(MediaType.APPLICATION_JSON).content(JSON_REGISTRO))
+                .andExpect(status().isNotFound());
+
+        verify(repository).findById(17);
+        verifyNoMoreInteractions(repository);
+    }
+
+    @Test
+    void eliminaConSoloElIdentificadorYUsaLaEntidadDelServidor() throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.of(registro));
+
+        mvc.perform(delete("/deleteTareas").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id_tarea\":17}"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("1"));
+
+        verify(repository).findById(17);
+        verify(repository).delete(registro);
+        verifyNoMoreInteractions(repository);
+    }
+
+    @Test
+    void laActualizacionConservaLosCamposProtegidos() throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.of(registro));
+        ObjectNode entrada = (ObjectNode) mapper.readTree(JSON_REGISTRO);
+        entrada.put("id_proyecto", 999);
+
+        mvc.perform(post("/updateTareas").contentType(MediaType.APPLICATION_JSON).content(entrada.toString()))
+                .andExpect(status().isOk());
+
+        verify(repository).findById(17);
+        verify(repository).save(registroCaptor.capture());
+        assertEquals(mapper.readTree(JSON_REGISTRO), mapper.valueToTree(registroCaptor.getValue()));
+        verifyNoMoreInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"nombre"})
+    void rechazaAltaSinTextoObligatorio(String campo) throws Exception {
+        for (String valor : new String[] {null, "", "   "}) {
+            ObjectNode entrada = (ObjectNode) mapper.readTree(JSON_REGISTRO);
+            entrada.put(campo, valor);
+            mvc.perform(post("/addTareas").contentType(MediaType.APPLICATION_JSON).content(entrada.toString()))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"id_proyecto"})
+    void rechazaAltaSinRelacionValida(String campo) throws Exception {
+        for (Integer valor : new Integer[] {null, 0, -1}) {
+            ObjectNode entrada = (ObjectNode) mapper.readTree(JSON_REGISTRO);
+            entrada.put(campo, valor);
+            mvc.perform(post("/addTareas").contentType(MediaType.APPLICATION_JSON).content(entrada.toString()))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void rechazaFiltroSinRelacionValida() throws Exception {
+        for (String cuerpo : List.of("{}", "{\"id_proyecto\":0}", "{\"id_proyecto\":-1}")) {
+            mvc.perform(post("/getTarea").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                    .andExpect(status().isBadRequest());
+        }
         verifyNoInteractions(repository);
     }
 

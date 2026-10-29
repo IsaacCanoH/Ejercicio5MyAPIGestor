@@ -2,6 +2,7 @@ package com.mx.cbtis.gestor.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
@@ -129,11 +131,14 @@ class ComentariosControllerTest {
 
     @Test
     void actualizaElRegistroConElIdentificadorYDatosRecibidos() throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.of(registro));
+
         mvc.perform(post("/updateComentario").contentType(MediaType.APPLICATION_JSON)
                 .content(JSON_REGISTRO))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
 
+        verify(repository).findById(17);
         verify(repository).save(registroCaptor.capture());
         assertEquals(mapper.readTree(JSON_REGISTRO), mapper.valueToTree(registroCaptor.getValue()));
         verifyNoMoreInteractions(repository);
@@ -141,11 +146,14 @@ class ComentariosControllerTest {
 
     @Test
     void eliminaElRegistroIndicado() throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.of(registro));
+
         mvc.perform(delete("/deleteComentario").contentType(MediaType.APPLICATION_JSON)
                 .content(JSON_REGISTRO))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1"));
 
+        verify(repository).findById(17);
         verify(repository).delete(registroCaptor.capture());
         assertEquals(mapper.readTree(JSON_REGISTRO), mapper.valueToTree(registroCaptor.getValue()));
         verifyNoMoreInteractions(repository);
@@ -240,6 +248,115 @@ class ComentariosControllerTest {
         mvc.perform(post("/getComentario").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
+        verifyNoInteractions(repository);
+    }
+
+
+    @Test
+    void ignoraElIdentificadorEnElAltaParaNoSobrescribirRegistros() throws Exception {
+        when(repository.save(any(Comentarios.class))).thenAnswer(invocacion -> {
+            Comentarios generado = invocacion.getArgument(0);
+            assertNull(generado.getId_comentario(), "El ID enviado no debe llegar al repositorio");
+            generado.setId_comentario(42);
+            return generado;
+        });
+
+        mvc.perform(post("/addComentario").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON_REGISTRO))
+                .andExpect(status().isOk())
+                .andExpect(content().string("1"));
+
+        verify(repository).save(registroCaptor.capture());
+        assertEquals(42, registroCaptor.getValue().getId_comentario());
+        verifyNoMoreInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/updateComentario", "/deleteComentario"})
+    void rechazaCambiosSinIdValido(String ruta) throws Exception {
+        for (String cuerpo : List.of("{}", "{\"id_comentario\":null}",
+                "{\"id_comentario\":0}", "{\"id_comentario\":-1}")) {
+            mvc.perform(request(ruta.startsWith("/delete") ? HttpMethod.DELETE : HttpMethod.POST, ruta)
+                    .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/updateComentario", "/deleteComentario"})
+    void noCreaNiEliminaUnRegistroQueNoExiste(String ruta) throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.empty());
+
+        mvc.perform(request(ruta.startsWith("/delete") ? HttpMethod.DELETE : HttpMethod.POST, ruta)
+                .contentType(MediaType.APPLICATION_JSON).content(JSON_REGISTRO))
+                .andExpect(status().isNotFound());
+
+        verify(repository).findById(17);
+        verifyNoMoreInteractions(repository);
+    }
+
+    @Test
+    void eliminaConSoloElIdentificadorYUsaLaEntidadDelServidor() throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.of(registro));
+
+        mvc.perform(delete("/deleteComentario").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id_comentario\":17}"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("1"));
+
+        verify(repository).findById(17);
+        verify(repository).delete(registro);
+        verifyNoMoreInteractions(repository);
+    }
+
+    @Test
+    void laActualizacionConservaLosCamposProtegidos() throws Exception {
+        when(repository.findById(17)).thenReturn(Optional.of(registro));
+        ObjectNode entrada = (ObjectNode) mapper.readTree(JSON_REGISTRO);
+        entrada.put("id_usuario", "alterado");
+        entrada.put("id_tarea", 999);
+        entrada.put("fecha_hora", "alterado");
+
+        mvc.perform(post("/updateComentario").contentType(MediaType.APPLICATION_JSON).content(entrada.toString()))
+                .andExpect(status().isOk());
+
+        verify(repository).findById(17);
+        verify(repository).save(registroCaptor.capture());
+        assertEquals(mapper.readTree(JSON_REGISTRO), mapper.valueToTree(registroCaptor.getValue()));
+        verifyNoMoreInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"id_usuario", "texto_comentario"})
+    void rechazaAltaSinTextoObligatorio(String campo) throws Exception {
+        for (String valor : new String[] {null, "", "   "}) {
+            ObjectNode entrada = (ObjectNode) mapper.readTree(JSON_REGISTRO);
+            entrada.put(campo, valor);
+            mvc.perform(post("/addComentario").contentType(MediaType.APPLICATION_JSON).content(entrada.toString()))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"id_tarea"})
+    void rechazaAltaSinRelacionValida(String campo) throws Exception {
+        for (Integer valor : new Integer[] {null, 0, -1}) {
+            ObjectNode entrada = (ObjectNode) mapper.readTree(JSON_REGISTRO);
+            entrada.put(campo, valor);
+            mvc.perform(post("/addComentario").contentType(MediaType.APPLICATION_JSON).content(entrada.toString()))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void rechazaFiltroSinRelacionValida() throws Exception {
+        for (String cuerpo : List.of("{}", "{\"id_tarea\":0}", "{\"id_tarea\":-1}")) {
+            mvc.perform(post("/getComentario").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                    .andExpect(status().isBadRequest());
+        }
         verifyNoInteractions(repository);
     }
 
