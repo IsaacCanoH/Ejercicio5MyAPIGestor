@@ -5,6 +5,8 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
+import java.time.LocalDate;
+
 @Entity
 public class Proyectos {
 
@@ -13,11 +15,11 @@ public class Proyectos {
 	private Integer id_proyecto;
 	private String nombre;
 	private String descripcion;
-	private String fecha_inicio;
-	private String fecha_finalizacion;
+	private LocalDate fecha_inicio;
+	private LocalDate fecha_finalizacion;
 	private String estado_proyecto;
 	private String fondo;
-	
+
 	public Proyectos() {
 		super();
 	}
@@ -28,8 +30,8 @@ public class Proyectos {
 		this.id_proyecto = id_proyecto;
 		this.nombre = nombre;
 		this.descripcion = descripcion;
-		this.fecha_inicio = fecha_inicio;
-		this.fecha_finalizacion = fecha_finalizacion;
+		setFecha_inicio(fecha_inicio);
+		setFecha_finalizacion(fecha_finalizacion);
 		this.estado_proyecto = estado_proyecto;
 		this.fondo = fondo;
 	}
@@ -59,19 +61,23 @@ public class Proyectos {
 	}
 
 	public String getFecha_inicio() {
-		return fecha_inicio;
+		return fecha_inicio == null ? null : fecha_inicio.toString();
 	}
 
-	public void setFecha_inicio(String fecha_inicio) {
-		this.fecha_inicio = fecha_inicio;
+	public void setFecha_inicio(String valor) {
+		this.fecha_inicio = valor == null || valor.isBlank()
+				? null
+				: LocalDate.parse(valor.trim());
 	}
 
 	public String getFecha_finalizacion() {
-		return fecha_finalizacion;
+		return fecha_finalizacion == null ? null : fecha_finalizacion.toString();
 	}
 
-	public void setFecha_finalizacion(String fecha_finalizacion) {
-		this.fecha_finalizacion = fecha_finalizacion;
+	public void setFecha_finalizacion(String valor) {
+		this.fecha_finalizacion = valor == null || valor.isBlank()
+				? null
+				: LocalDate.parse(valor.trim());
 	}
 
 	public String getEstado_proyecto() {

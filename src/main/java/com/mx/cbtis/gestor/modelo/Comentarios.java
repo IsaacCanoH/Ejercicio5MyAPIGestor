@@ -5,17 +5,21 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
+import javax.persistence.Convert;
+import com.mx.cbtis.gestor.converter.FechaHoraConverter;
+
 @Entity
 public class Comentarios {
-	
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Integer id_comentario;
 	private String id_usuario;
 	private Integer id_tarea;
 	private String texto_comentario;
+	@Convert(converter = FechaHoraConverter.class)
 	private String fecha_hora;
-	
+
 	public Comentarios() {
 		super();
 	}
