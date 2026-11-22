@@ -1,0 +1,73 @@
+name: CI API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Pruebas con MariaDB y Docker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      DB_URL: jdbc:mariadb://127.0.0.1:3306/dbgestor_ci
+      DB_USERNAME: gestor_ci
+      DB_PASSWORD: clave_ci_temporal
+
+    services:
+      db:
+        image: mariadb@sha256:d4fdec0510ad498e4f3127da30a99df3745bd6d5e611ae6ac5f76403d9284a8d
+        env:
+          MARIADB_DATABASE: dbgestor_ci
+          MARIADB_USER: gestor_ci
+          MARIADB_PASSWORD: clave_ci_temporal
+          MARIADB_ROOT_PASSWORD: root_ci_temporal
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-start-period=30s
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@v7
+
+      - name: Preparar Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Inicializar estructura de la base de datos
+        run: |
+          docker exec -i "${{ job.services.db.id }}" \
+            mariadb \
+            --user="$DB_USERNAME" \
+            --password="$DB_PASSWORD" \
+            dbgestor_ci < src/test/resources/schema-ci.sql
+
+      - name: Compilar y ejecutar pruebas
+        run: bash ./mvnw -B -ntp clean verify
+
+      - name: Guardar reportes de pruebas y cobertura
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reportes-api
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+          retention-days: 7
+
+      - name: Construir imagen Docker
+        run: docker build --tag gestor-api:ci .
