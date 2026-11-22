@@ -19,6 +19,8 @@ jobs:
       DB_URL: jdbc:postgresql://127.0.0.1:5432/dbgestor_ci
       DB_USERNAME: gestor_ci
       DB_PASSWORD: clave_ci_temporal
+      MONITORING_USERNAME: monitor_ci
+      MONITORING_PASSWORD: monitoreo_ci_temporal
 
     services:
       db:
