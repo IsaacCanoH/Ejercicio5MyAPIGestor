@@ -5,6 +5,8 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
+import java.time.LocalDate;
+
 @Entity
 public class Tareas {
 
@@ -13,7 +15,7 @@ public class Tareas {
 	private Integer id_tarea;
 	private String nombre;
 	private String descripcion;
-	private String fecha_vencimiento;
+	private LocalDate fecha_vencimiento;
 	private String lista;
 	private String estado;
 	private Integer id_proyecto;
@@ -28,7 +30,7 @@ public class Tareas {
 		this.id_tarea = id_tarea;
 		this.nombre = nombre;
 		this.descripcion = descripcion;
-		this.fecha_vencimiento = fecha_vencimiento;
+		setFecha_vencimiento(fecha_vencimiento);
 		this.lista = lista;
 		this.estado = estado;
 		this.id_proyecto = id_proyecto;
@@ -59,11 +61,13 @@ public class Tareas {
 	}
 
 	public String getFecha_vencimiento() {
-		return fecha_vencimiento;
+		return fecha_vencimiento == null ? null : fecha_vencimiento.toString();
 	}
 
-	public void setFecha_vencimiento(String fecha_vencimiento) {
-		this.fecha_vencimiento = fecha_vencimiento;
+	public void setFecha_vencimiento(String valor) {
+		this.fecha_vencimiento = valor == null || valor.isBlank()
+				? null
+				: LocalDate.parse(valor.trim());
 	}
 
 	public String getLista() {

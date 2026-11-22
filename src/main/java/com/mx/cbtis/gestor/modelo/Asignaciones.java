@@ -5,6 +5,8 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
+import java.time.LocalDate;
+
 @Entity
 public class Asignaciones {
 
@@ -13,8 +15,8 @@ public class Asignaciones {
 	private Integer id_asignacion;
 	private Integer id_usuario;
 	private Integer id_tarea;
-	private String fecha_asignacion;
-	
+	private LocalDate fecha_asignacion;
+
 	public Asignaciones() {
 		super();
 	}
@@ -24,7 +26,7 @@ public class Asignaciones {
 		this.id_asignacion = id_asignacion;
 		this.id_usuario = id_usuario;
 		this.id_tarea = id_tarea;
-		this.fecha_asignacion = fecha_asignacion;
+		setFecha_asignacion(fecha_asignacion);
 	}
 
 	public Integer getId_asignacion() {
@@ -52,10 +54,12 @@ public class Asignaciones {
 	}
 
 	public String getFecha_asignacion() {
-		return fecha_asignacion;
+		return fecha_asignacion == null ? null : fecha_asignacion.toString();
 	}
 
-	public void setFecha_asignacion(String fecha_asignacion) {
-		this.fecha_asignacion = fecha_asignacion;
+	public void setFecha_asignacion(String valor) {
+		this.fecha_asignacion = valor == null || valor.isBlank()
+				? null
+				: LocalDate.parse(valor.trim());
 	}
 }

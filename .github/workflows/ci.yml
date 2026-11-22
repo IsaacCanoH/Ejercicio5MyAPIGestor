@@ -11,27 +11,26 @@ permissions:
 
 jobs:
   verificar:
-    name: Pruebas con MariaDB y Docker
+    name: Pruebas con PostgreSQL y Docker
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     env:
-      DB_URL: jdbc:mariadb://127.0.0.1:3306/dbgestor_ci
+      DB_URL: jdbc:postgresql://127.0.0.1:5432/dbgestor_ci
       DB_USERNAME: gestor_ci
       DB_PASSWORD: clave_ci_temporal
 
     services:
       db:
-        image: mariadb@sha256:d4fdec0510ad498e4f3127da30a99df3745bd6d5e611ae6ac5f76403d9284a8d
+        image: postgres:18
         env:
-          MARIADB_DATABASE: dbgestor_ci
-          MARIADB_USER: gestor_ci
-          MARIADB_PASSWORD: clave_ci_temporal
-          MARIADB_ROOT_PASSWORD: root_ci_temporal
+          POSTGRES_DB: dbgestor_ci
+          POSTGRES_USER: gestor_ci
+          POSTGRES_PASSWORD: clave_ci_temporal
         ports:
-          - 3306:3306
+          - 5432:5432
         options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-cmd="pg_isready -U gestor_ci -d dbgestor_ci"
           --health-start-period=30s
           --health-interval=10s
           --health-timeout=5s
@@ -48,13 +47,18 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Inicializar estructura de la base de datos
+      - name: Inicializar estructura de PostgreSQL
         run: |
-          docker exec -i "${{ job.services.db.id }}" \
-            mariadb \
-            --user="$DB_USERNAME" \
-            --password="$DB_PASSWORD" \
-            dbgestor_ci < src/test/resources/schema-ci.sql
+          docker exec -i \
+            --env PGPASSWORD="$DB_PASSWORD" \
+            "${{ job.services.db.id }}" \
+            psql \
+            --host=127.0.0.1 \
+            --username="$DB_USERNAME" \
+            --dbname=dbgestor_ci \
+            --set=ON_ERROR_STOP=1 \
+            --single-transaction \
+            < src/test/resources/schema-ci.sql
 
       - name: Compilar y ejecutar pruebas
         run: bash ./mvnw -B -ntp clean verify
