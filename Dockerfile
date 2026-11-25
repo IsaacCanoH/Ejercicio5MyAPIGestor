@@ -21,6 +21,10 @@ RUN groupadd --gid 10001 app \
 
 COPY --from=build --chown=app:app /build/target/*.jar /app/app.jar
 
+ADD --chown=app:app --chmod=644 \
+    https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.34.0/opentelemetry-javaagent.jar \
+    /app/opentelemetry-javaagent.jar
+
 USER app
 
 EXPOSE 8081
